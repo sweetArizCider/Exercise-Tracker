@@ -19,7 +19,8 @@ app.use(express.json());
 // ENDPOINTS 
 
   // create user
-app.post('/api/users', async(req, res) => {
+app.route('/api/users')
+.post(async(req, res) => {
   const username = req.body.username;
   try{
     const newUser = await User.create({username});
@@ -27,19 +28,68 @@ app.post('/api/users', async(req, res) => {
   }catch(error){
     console.log({error: error});
   }
-  //return json wwith 
-});
-
-  // get a list of all users
-
-app.get('/api/users', (req,res)=>{
+})
+.get(async (req,res)=>{
   //return a array of objects
+  const foundUsers = await User.find({});
+  res.status(200).send(foundUsers);
 })
 
-  //post /api/users/:_id/exercises description*, duraction * and optionally date (if no date current date) => user json with exercise fields added
 
-// api/users/:_id/logs => returns a user object with a count property representing the number of exercises that belong to that user. and log array with its objects (duration is a number)
-// description should be a string, description, duration, and date should be a dateString
+  //post /api/users/:_id/exercises description*, duraction * and optionally date (if no date current date) => user json with exercise fields added
+app.route('/api/users/:_id/exercises')
+.post(async (req,res)=>{
+  const userId = req.params._id;
+  const {description, duration, date} = req.body
+  try{
+    const user = await User.findById(userId);
+    if(!user){
+      return res.status(404).json({error: "No user found :("})
+    }
+
+    const exerciseData = {
+      userId, 
+      description, 
+      duration,
+      date: date ? date : new Date().toDateString()
+    };
+
+    const newExercise = await Log.create(exerciseData);
+
+    res.status(201).json({_id: userId, username: user.username,date: newExercise.date, duration: newExercise.duration, description: newExercise.description,});
+  }catch(error){
+    console.log(error);
+    res.status(400).json({error: "Bad data "})
+  }
+})
+
+app.route('/api/users/:_id/logs')
+.get(async (req, res)=>{
+  const userId = req.params._id;
+  const {from, to, limit} = req.query;
+  try{
+    const user = await User.findById(userId);
+    if(!user){
+      return res.status(404).json({error: "No user found :("})
+    }
+
+    if(!from && !to && !limit){
+      const userLogs = await Log.find({userId});
+      const userLogsCount = userLogs.length;
+      const logsFields = userLogs.map(log => ({
+        description: log.description,
+        duration: log.duration,
+        date: log.date.toDateString()
+      }))
+  
+      res.status(201).json({_id: user._id, username: user.username, count: userLogsCount, log: logsFields})
+    }
+
+  }catch(error){
+    console.log(error);
+    res.status(500).json({error: "Bad data "});
+  }
+})
 
 // You can add from, to and limit parameters to a GET /api/users/:_id/logs request to retrieve part of the log of any user. 
 // from and to are dates in yyyy-mm-dd format. limit is an integer of how many logs to send back.
