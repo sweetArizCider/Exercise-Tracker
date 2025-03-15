@@ -11,8 +11,8 @@ const log = new mongoose.Schema({
         required: true
     },
     date: {
-        type: Date
-    }
+        type: Date   
+     }
 })
 
 const Log = mongoose.model('Log', log);
